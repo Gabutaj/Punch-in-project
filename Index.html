@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Punch-Out!! NES</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #fff;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            position: fixed;
+        }
+
+        /* Game Container Responsif */
+        #game-container {
+            width: 100%;
+            height: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            position: relative;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header Game */
+        #game-header {
+            height: 50px;
+            background: linear-gradient(to bottom, #8b0000, #660000);
+            border-bottom: 3px solid #ffd700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .game-title {
+            font-size: clamp(16px, 4vw, 24px);
+            color: #ffd700;
+            text-shadow: 2px 2px 0 #000;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+
+        /* Game Area Responsif */
+        #game-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        /* Ring Area Responsif */
+        #ring-area {
+            flex: 1;
+            position: relative;
+            background: #111;
+            overflow: hidden;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 10px;
+        }
+
+        #ring {
+            position: relative;
+            width: 90%;
+            max-width: 350px;
+            height: 60%;
+            max-height: 250px;
+            margin: 0 auto;
+            background: repeating-linear-gradient(
+                45deg,
+                #333,
+                #333 10px,
+                #222 10px,
+                #222 20px
+            );
+            border: 3px solid #ffd700;
+            border-radius: 5px;
+            transform: perspective(400px) rotateX(15deg);
+            transform-origin: bottom;
+        }
+
+        /* Karakter Responsif */
+        #player {
+            position: absolute;
+            width: clamp(30px, 8vw, 50px);
+            height: clamp(60px, 15vh, 100px);
+            bottom: 20%;
+            left: 25%;
+            z-index: 10;
+            transition: left 0.2s, transform 0.1s;
+        }
+
+        .player-body {
+            width: 100%;
+            height: 100%;
+            background: #0000ff;
+            position: relative;
+            border: 2px solid #0066cc;
+            border-radius: 5px;
+        }
+
+        .player-head {
+            width: 80%;
+            height: 35px;
+            background: #ffcc99;
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 2px solid #cc9966;
+            border-radius: 50%;
+        }
+
+        .player-glove {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #ff0000;
+            border: 2px solid #cc0000;
+            border-radius: 50%;
+        }
+
+        .glove-left {
+            top: 40%;
+            left: -15px;
+        }
+
+        .glove-right {
+            top: 40%;
+            right: -15px;
+        }
+
+        #boss {
+            position: absolute;
+            width: clamp(40px, 10vw, 60px);
+            height: clamp(80px, 18vh, 120px);
+            bottom: 20%;
+            right: 25%;
+            z-index: 10;
+            transition: transform 0.1s;
+        }
+
+        .boss-body {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            border-radius: 5px;
+        }
+
+        .boss-head {
+            width: 80%;
+            height: 40px;
+            background: #ff9966;
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 2px solid #cc6633;
+            border-radius: 50%;
+        }
+
+        /* HUD Responsif */
+        #hud {
+            height: clamp(100px, 25vh, 150px);
+            background: #111;
+            border-top: 3px solid #8b0000;
+            display: flex;
+            flex-direction: column;
+            padding: 8px;
+            flex-shrink: 0;
+        }
+
+        .health-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            gap: 10px;
+        }
+
+        .health-wrapper {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .health-label {
+            color: #fff;
+            font-size: clamp(10px, 2.5vw, 14px);
+            margin-bottom: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .health-bar {
+            height: 16px;
+            background: #333;
+            border: 2px solid #555;
+            overflow: hidden;
+            border-radius: 3px;
+        }
+
+        .health-fill {
+            height: 100%;
+            width: 100%;
+            transition: width 0.3s;
+        }
+
+        #player-health {
+            background: linear-gradient(to right, #00ff00, #00cc00);
+        }
+
+        #boss-health {
+            background: linear-gradient(to right, #ff9900, #ff6600);
+        }
+
+        .info-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .round-info, .time-info {
+            color: #ffd700;
+            font-size: clamp(12px, 3vw, 16px);
+            font-weight: bold;
+        }
+
+        .ko-counter {
+            color: #ff0000;
+            font-size: clamp(12px, 3vw, 16px);
+            font-weight: bold;
+        }
+
+        /* Kontrol Responsif */
+        #controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 6px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .control-btn {
+            background: #333;
+            border: 2px solid #555;
+            color: #fff;
+            font-size: clamp(10px, 2.5vw, 14px);
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            border-radius: 5px;
+            user-select: none;
+            min-height: 35px;
+            padding: 2px;
+            word-break: break-word;
+            line-height: 1.1;
+        }
+
+        .control-btn:active {
+            background: #555;
+            border-color: #ffd700;
+            transform: scale(0.95);
+        }
+
+        .punch-btn { background: #8b0000; border-color: #ff3333; }
+        .block-btn { background: #006600; border-color: #00cc00; }
+        .dodge-btn { background: #000066; border-color: #0066cc; }
+
+        /* Layar Menu Responsif */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            text-align: center;
+            background: #000;
+            z-index: 100;
+            overflow-y: auto;
+        }
+
+        #title-screen {
+            background-image: 
+                linear-gradient(rgba(0,0,0,0.9), rgba(0,0,0,0.9)),
+                repeating-linear-gradient(0deg, transparent, transparent 2px, #8b0000 2px, #8b0000 4px);
+        }
+
+        .title-logo {
+            font-size: clamp(24px, 8vw, 48px);
+            color: #ffd700;
+            text-shadow: 3px 3px 0 #8b0000;
+            margin-bottom: 20px;
+            line-height: 1.1;
+        }
+
+        .nes-button {
+            background: #8b0000;
+            color: #fff;
+            border: 3px solid #ffd700;
+            padding: clamp(10px, 3vw, 15px) clamp(20px, 5vw, 30px);
+            font-size: clamp(14px, 4vw, 20px);
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            margin: 10px;
+            text-transform: uppercase;
+            border-radius: 5px;
+            min-width: 150px;
+            max-width: 80%;
+        }
+
+        .nes-button:active {
+            background: #ff0000;
+            transform: scale(0.95);
+        }
+
+        /* Fighter Select Responsif */
+        #select-screen {
+            background: #000;
+        }
+
+        .select-title {
+            color: #ffd700;
+            font-size: clamp(18px, 5vw, 24px);
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 0 #8b0000;
+        }
+
+        .fighter-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 20px;
+        }
+
+        .fighter-card {
+            background: #222;
+            border: 3px solid #444;
+            padding: 12px;
+            cursor: pointer;
+            border-radius: 5px;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .fighter-card.selected {
+            border-color: #ffd700;
+            background: #333;
+        }
+
+        .fighter-card:active {
+            transform: scale(0.95);
+        }
+
+        .fighter-name {
+            color: #fff;
+            font-size: clamp(12px, 3vw, 16px);
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .fighter-stats {
+            color: #888;
+            font-size: clamp(10px, 2.5vw, 12px);
+            line-height: 1.2;
+        }
+
+        /* Message Box Responsif */
+        #message-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95);
+            border: 4px solid #ffd700;
+            padding: clamp(15px, 4vw, 20px);
+            z-index: 1000;
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .message-text {
+            color: #ffd700;
+            font-size: clamp(16px, 4vw, 24px);
+            margin-bottom: 20px;
+            line-height: 1.3;
+        }
+
+        /* Efek Visual Responsif */
+        .punch-effect {
+            position: absolute;
+            width: clamp(30px, 8vw, 50px);
+            height: clamp(30px, 8vw, 50px);
+            background: #ffff00;
+            border-radius: 50%;
+            opacity: 0.8;
+            animation: punchEffect 0.3s;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        @keyframes punchEffect {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+
+        .hit-effect {
+            animation: hitShake 0.3s;
+        }
+
+        @keyframes hitShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .ko-effect {
+            animation: koFall 1s forwards;
+        }
+
+        @keyframes koFall {
+            0% { transform: translateY(0) rotate(0deg); }
+            100% { transform: translateY(100px) rotate(90deg); opacity: 0; }
+        }
+
+        /* Level Progress */
+        #level-progress {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            width: 100%;
+            padding: 5px 10px;
+            background: rgba(0,0,0,0.7);
+            z-index: 50;
+            text-align: center;
+            color: #ffd700;
+            font-size: clamp(12px, 3vw, 16px);
+        }
+
+        /* Responsif untuk Landscape */
+        @media (orientation: landscape) and (max-height: 500px) {
+            #game-header {
+                height: 40px;
+            }
+            
+            #ring-area {
+                padding: 5px;
+            }
+            
+            #ring {
+                height: 70%;
+            }
+            
+            #hud {
+                height: 80px;
+                flex-direction: row;
+                padding: 5px;
+            }
+            
+            .health-container {
+                flex-direction: column;
+                width: 30%;
+                margin-bottom: 0;
+                margin-right: 10px;
+            }
+            
+            .info-container {
+                flex-direction: column;
+                width: 20%;
+                margin-bottom: 0;
+                margin-right: 10px;
+            }
+            
+            #controls {
+                flex: 1;
+                grid-template-columns: repeat(3, 1fr);
+                grid-template-rows: repeat(2, 1fr);
+            }
+            
+            .control-btn {
+                font-size: 10px;
+                min-height: 25px;
+            }
+            
+            #player, #boss {
+                bottom: 25%;
+            }
+        }
+
+        /* Responsif untuk HP Kecil */
+        @media (max-width: 320px) {
+            .fighter-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            #controls {
+                gap: 4px;
+            }
+            
+            .control-btn {
+                font-size: 9px;
+            }
+        }
+
+        /* Untuk HP Besar/Tablet */
+        @media (min-width: 768px) {
+            #game-container {
+                max-width: 768px;
+                margin: 0 auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Game Container -->
+    <div id="game-container">
+        <!-- Header -->
+        <div id="game-header">
+            <div class="game-title">PUNCH-OUT!! NES</div>
+        </div>
+
+        <!-- Game Area -->
+        <div id="game-area">
+            <!-- Level Progress -->
+            <div id="level-progress" style="display: none;">
+                LEVEL 1/3 - KO: <span id="ko-count">0</span>/3
+            </div>
+            
+            <!-- Ring Area -->
+            <div id="ring-area">
+                <div id="ring">
+                    <!-- Player -->
+                    <div id="player">
+                        <div class="player-body">
+                            <div class="player-head"></div>
+                            <div class="player-glove glove-left"></div>
+                            <div class="player-glove glove-right"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Boss -->
+                    <div id="boss"></div>
+                </div>
+            </div>
+
+            <!-- HUD -->
+            <div id="hud">
+                <div class="health-container">
+                    <div class="health-wrapper">
+                        <div class="health-label">LITTLE MAC</div>
+                        <div class="health-bar">
+                            <div id="player-health" class="health-fill" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    <div class="health-wrapper">
+                        <div class="health-label" id="boss-name">OPPONENT</div>
+                        <div class="health-bar">
+                            <div id="boss-health" class="health-fill" style="width: 100%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-container">
+                    <div class="round-info" id="round-text">ROUND 1</div>
+                    <div class="time-info" id="time-text">02:30</div>
+                    <div class="ko-counter" id="ko-counter">KO: 0</div>
+                </div>
+
+                <div id="controls">
+                    <button class="control-btn dodge-btn" id="dodge-left">← DODGE</button>
+                    <button class="control-btn punch-btn" id="jab">JAB</button>
+                    <button class="control-btn dodge-btn" id="dodge-right">DODGE →</button>
+                    <button class="control-btn block-btn" id="block">BLOCK</button>
+                    <button class="control-btn punch-btn" id="hook">HOOK</button>
+                    <button class="control-btn punch-btn" id="uppercut">UPPERCUT</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Title Screen -->
+        <div id="title-screen" class="screen">
+            <div class="title-logo">PUNCH-OUT!!<br>NES EDITION</div>
+            <div style="color: #ccc; margin-bottom: 20px; font-size: clamp(12px, 3vw, 16px);">
+                TOUCH SCREEN CONTROLS<br>
+                ANDROID COMPATIBLE
+            </div>
+            <button class="nes-button" id="start-btn">START GAME</button>
+            <div style="margin-top: 30px; color: #666; font-size: clamp(10px, 2.5vw, 12px);">
+                3 KOs TO WIN EACH LEVEL
+            </div>
+        </div>
+
+        <!-- Select Screen -->
+        <div id="select-screen" class="screen">
+            <div class="select-title">CHOOSE OPPONENT</div>
+            <div class="fighter-grid">
+                <div class="fighter-card" data-boss="glass-joe">
+                    <div class="fighter-name">GLASS JOE</div>
+                    <div class="fighter-stats">Health: 60<br>KO Needed: 1<br>★☆☆☆☆</div>
+                </div>
+                <div class="fighter-card" data-boss="von-kaiser">
+                    <div class="fighter-name">VON KAISER</div>
+                    <div class="fighter-stats">Health: 80<br>KO Needed: 2<br>★★☆☆☆</div>
+                </div>
+                <div class="fighter-card" data-boss="king-hippo">
+                    <div class="fighter-name">KING HIPPO</div>
+                    <div class="fighter-stats">Health: 100<br>KO Needed: 3<br>★★★☆☆</div>
+                </div>
+                <div class="fighter-card" data-boss="mike-tyson">
+                    <div class="fighter-name">MIKE TYSON</div>
+                    <div class="fighter-stats">Health: 120<br>KO Needed: 3<br>★★★★★</div>
+                </div>
+            </div>
+            <button class="nes-button" id="fight-btn">FIGHT!</button>
+        </div>
+
+        <!-- Message Box -->
+        <div id="message-box">
+            <div class="message-text" id="message-text"></div>
+            <button class="nes-button" id="continue-btn">CONTINUE</button>
+        </div>
+    </div>
+
+    <script>
+        // ========== INISIALISASI GAME ==========
+        let currentScreen = 'title';
+        let selectedBoss = null;
+        let gameRunning = false;
+        let gameLoopInterval = null;
+        
+        // Data Game State
+        const gameState = {
+            round: 1,
+            time: 150,
+            playerHealth: 100,
+            bossHealth: 100,
+            score: 0,
+            isBlocking: false,
+            bossKOCount: 0,
+            level: 1,
+            totalKOs: 0,
+            maxLevels: 4
+        };
+        
+        // Data Bos dengan KO yang dibutuhkan
+        const bosses = [
+            { // Level 1
+                id: 'glass-joe',
+                name: 'GLASS JOE',
+                maxHealth: 60,
+                color: '#ff6666',
+                speed: 0.8,
+                attacks: ['jab'],
+                difficulty: 1,
+                kosNeeded: 1
+            },
+            { // Level 2
+                id: 'von-kaiser',
+                name: 'VON KAISER',
+                maxHealth: 80,
+                color: '#6666ff',
+                speed: 1.0,
+                attacks: ['jab', 'hook'],
+                difficulty: 2,
+                kosNeeded: 2
+            },
+            { // Level 3
+                id: 'king-hippo',
+                name: 'KING HIPPO',
+                maxHealth: 100,
+                color: '#ff9900',
+                speed: 0.7,
+                attacks: ['uppercut'],
+                difficulty: 3,
+                kosNeeded: 3
+            },
+            { // Level 4 (Final)
+                id: 'mike-tyson',
+                name: 'MIKE TYSON',
+                maxHealth: 120,
+                color: '#000000',
+                speed: 1.5,
+                attacks: ['jab', 'hook', 'uppercut'],
+                difficulty: 5,
+                kosNeeded: 3
+            }
+        ];
+        
+        // Elemen DOM
+        const titleScreen = document.getElementById('title-screen');
+        const selectScreen = document.getElementById('select-screen');
+        const levelProgress = document.getElementById('level-progress');
+        const koCounter = document.getElementById('ko-counter');
+        const koCount = document.getElementById('ko-count');
+        const messageBox = document.getElementById('message-box');
+        const messageText = document.getElementById('message-text');
+        const continueBtn = document.getElementById('continue-btn');
+        
+        // ========== INISIALISASI ==========
+        function init() {
+            setupEventListeners();
+            showScreen('title');
+            resizeGame();
+            
+            // Handle resize
+            window.addEventListener('resize', resizeGame);
+            window.addEventListener('orientationchange', resizeGame);
+        }
+        
+        // Responsif: Adjust ukuran game
+        function resizeGame() {
+            const gameArea = document.getElementById('game-area');
+            const controls = document.getElementById('controls');
+            const hud = document.getElementById('hud');
+            
+            // Adjust untuk landscape mobile
+            if (window.innerHeight < 500 && window.innerWidth > window.innerHeight) {
+                gameArea.style.flexDirection = 'row';
+                hud.style.width = '40%';
+                hud.style.height = '100%';
+                hud.style.borderTop = 'none';
+                hud.style.borderLeft = '3px solid #8b0000';
+            } else {
+                gameArea.style.flexDirection = 'column';
+                hud.style.width = '100%';
+                hud.style.height = 'clamp(100px, 25vh, 150px)';
+                hud.style.borderLeft = 'none';
+                hud.style.borderTop = '3px solid #8b0000';
+            }
+        }
+        
+        // ========== EVENT LISTENERS ==========
+        function setupEventListeners() {
+            // Tombol Start
+            document.getElementById('start-btn').addEventListener('click', function() {
+                showScreen('select');
+            });
+            
+            // Pilihan bos (untuk mode normal)
+            const fighterCards = document.querySelectorAll('.fighter-card');
+            fighterCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    fighterCards.forEach(c => c.classList.remove('selected'));
+                    this.classList.add('selected');
+                    selectedBoss = this.dataset.boss;
+                });
+            });
+            
+            // Tombol Fight (mode normal)
+            document.getElementById('fight-btn').addEventListener('click', function() {
+                if (!selectedBoss) {
+                    showMessage('SELECT OPPONENT FIRST!');
+                    return;
+                }
+                startGameWithBoss(selectedBoss);
+            });
+            
+            // Kontrol game
+            setupGameControls();
+            
+            // Tombol Continue
+            continueBtn.addEventListener('click', handleContinue);
+            
+            // Start langsung dengan level progression (untuk testing)
+            document.getElementById('start-btn').addEventListener('dblclick', function() {
+                startProgressionMode();
+            });
+        }
+        
+        function setupGameControls() {
+            const controls = ['jab', 'hook', 'uppercut', 'block', 'dodge-left', 'dodge-right'];
+            
+            controls.forEach(control => {
+                const btn = document.getElementById(control);
+                
+                // Touch events untuk mobile
+                btn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    handleControl(control, true);
+                });
+                
+                btn.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    if (control === 'block') {
+                        handleControl(control, false);
+                    }
+                });
+                
+                // Mouse events untuk desktop
+                btn.addEventListener('mousedown', () => {
+                    handleControl(control, true);
+                });
+                
+                btn.addEventListener('mouseup', () => {
+                    if (control === 'block') {
+                        handleControl(control, false);
+                    }
+                });
+                
+                btn.addEventListener('mouseleave', () => {
+                    if (control === 'block') {
+                        handleControl(control, false);
+                    }
+                });
+            });
+        }
+        
+        // ========== CONTROL HANDLING ==========
+        function handleControl(control, isActive) {
+            if (!gameRunning) return;
+            
+            switch(control) {
+                case 'jab':
+                    if (isActive) punch('jab');
+                    break;
+                case 'hook':
+                    if (isActive) punch('hook');
+                    break;
+                case 'uppercut':
+                    if (isActive) punch('uppercut');
+                    break;
+                case 'block':
+                    gameState.isBlocking = isActive;
+                    const blockBtn = document.getElementById('block');
+                    blockBtn.style.background = isActive ? '#00cc00' : '#006600';
+                    break;
+                case 'dodge-left':
+                    if (isActive) dodge('left');
+                    break;
+                case 'dodge-right':
+                    if (isActive) dodge('right');
+                    break;
+            }
+        }
+        
+        // ========== SCREEN MANAGEMENT ==========
+        function showScreen(screen) {
+            currentScreen = screen;
+            
+            titleScreen.style.display = 'none';
+            selectScreen.style.display = 'none';
+            
+            switch(screen) {
+                case 'title':
+                    titleScreen.style.display = 'flex';
+                    break;
+                case 'select':
+                    selectScreen.style.display = 'flex';
+                    break;
+                case 'fight':
+                    // Already showing
+                    break;
+            }
+        }
+        
+        // ========== START GAME MODES ==========
+        function startProgressionMode() {
+            // Mode progression: Lawan semua bos secara berurutan
+            gameState.level = 1;
+            gameState.totalKOs = 0;
+            gameState.bossKOCount = 0;
+            nextLevel();
+        }
+        
+        function startGameWithBoss(bossId) {
+            // Mode pilihan bos tunggal
+            const bossIndex = bosses.findIndex(b => b.id === bossId);
+            gameState.level = bossIndex + 1;
+            gameState.totalKOs = 0;
+            gameState.bossKOCount = 0;
+            startLevel(bossIndex);
+        }
+        
+        function nextLevel() {
+            if (gameState.level > bosses.length) {
+                // Game completed
+                showMessage(`CHAMPION!\n\nTOTAL SCORE: ${gameState.score}\nTOTAL KOs: ${gameState.totalKOs}`);
+                return;
+            }
+            
+            startLevel(gameState.level - 1);
+        }
+        
+        function startLevel(bossIndex) {
+            const boss = bosses[bossIndex];
+            
+            showScreen('fight');
+            gameRunning = true;
+            
+            // Reset game state untuk level baru
+            gameState.round = 1;
+            gameState.time = 150;
+            gameState.playerHealth = 100;
+            gameState.bossHealth = boss.maxHealth;
+            gameState.bossKOCount = 0;
+            
+            // Setup bos
+            setupBoss(boss);
+            
+            // Update HUD
+            updateHUD();
+            updateLevelDisplay();
+            
+            // Mulai game loop
+            startGameLoop();
+            
+            // Tampilkan pesan level
+            showMessage(`LEVEL ${gameState.level}\n${boss.name}\nFIGHT!`, 1500);
+        }
+        
+        // ========== BOSS SETUP ==========
+        function setupBoss(boss) {
+            const bossElement = document.getElementById('boss');
+            const bossNameElement = document.getElementById('boss-name');
+            
+            // Clear previous boss
+            bossElement.innerHTML = '';
+            bossElement.style.background = boss.color;
+            bossElement.style.border = `2px solid ${darkenColor(boss.color)}`;
+            
+            // Create boss head
+            const head = document.createElement('div');
+            head.className = 'boss-head';
+            bossElement.appendChild(head);
+            
+            // Update boss name
+            bossNameElement.textContent = boss.name;
+            
+            // Add special effects based on boss
+            if (boss.id === 'king-hippo') {
+                // Crown for King Hippo
+                const crown = document.createElement('div');
+                crown.style.position = 'absolute';
+                crown.style.width = '120%';
+                crown.style.height = '15px';
+                crown.style.top = '-40px';
+                crown.style.left = '-10%';
+                crown.style.background = '#ffd700';
+                crown.style.clipPath = 'polygon(0% 100%, 20% 0%, 40% 100%, 60% 0%, 80% 100%, 100% 0%, 100% 100%)';
+                bossElement.appendChild(crown);
+            } else if (boss.id === 'mike-tyson') {
+                // Tattoo for Mike Tyson
+                const tattoo = document.createElement('div');
+                tattoo.style.position = 'absolute';
+                tattoo.style.width = '15px';
+                tattoo.style.height = '15px';
+                tattoo.style.top = '10px';
+                tattoo.style.left = '10px';
+                tattoo.style.background = '#ff0000';
+                tattoo.style.borderRadius = '50%';
+                head.appendChild(tattoo);
+            }
+        }
+        
+        function darkenColor(color) {
+            return color.replace(/\d+/g, num => Math.max(0, parseInt(num) - 40));
+        }
+        
+        // ========== GAME LOOP ==========
+        function startGameLoop() {
+            clearInterval(gameLoopInterval);
+            gameLoopInterval = setInterval(updateGame, 100);
+        }
+        
+        function updateGame() {
+            if (!gameRunning) return;
+            
+            // Update timer
+            gameState.time--;
+            if (gameState.time <= 0) {
+                endRound('time');
+                return;
+            }
+            
+            updateTimer();
+            
+            // Boss AI
+            const boss = bosses[gameState.level - 1];
+            const attackChance = 0.08 + (boss.difficulty * 0.02);
+            
+            if (Math.random() < attackChance) {
+                bossAttack();
+            }
+        }
+        
+        function updateTimer() {
+            const minutes = Math.floor(gameState.time / 60);
+            const seconds = gameState.time % 60;
+            document.getElementById('time-text').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Flash merah jika waktu hampir habis
+            if (gameState.time < 30) {
+                const timeText = document.getElementById('time-text');
+                timeText.style.color = gameState.time % 2 === 0 ? '#ff0000' : '#ffd700';
+            }
+        }
+        
+        // ========== UPDATE DISPLAYS ==========
+        function updateHUD() {
+            const boss = bosses[gameState.level - 1];
+            
+            // Update health bars
+            document.getElementById('player-health').style.width = `${gameState.playerHealth}%`;
+            document.getElementById('boss-health').style.width = `${(gameState.bossHealth / boss.maxHealth) * 100}%`;
+            
+            // Update round
+            document.getElementById('round-text').textContent = `ROUND ${gameState.round}`;
+            
+            // Update KO counter
+            koCounter.textContent = `KO: ${gameState.bossKOCount}`;
+            
+            // Update health bar colors based on health
+            if (gameState.playerHealth < 30) {
+                document.getElementById('player-health').style.background = 'linear-gradient(to right, #ff0000, #cc0000)';
+            } else if (gameState.playerHealth < 60) {
+                document.getElementById('player-health').style.background = 'linear-gradient(to right, #ffff00, #ffcc00)';
+            } else {
+                document.getElementById('player-health').style.background = 'linear-gradient(to right, #00ff00, #00cc00)';
+            }
+        }
+        
+        function updateLevelDisplay() {
+            const boss = bosses[gameState.level - 1];
+            levelProgress.style.display = 'block';
+            levelProgress.innerHTML = 
+                `LEVEL ${gameState.level}/${bosses.length} - ${boss.name} - KO: <span id="ko-count">${gameState.bossKOCount}</span>/${boss.kosNeeded}`;
+        }
+        
+        // ========== PLAYER ACTIONS ==========
+        function punch(type) {
+            if (!gameRunning) return;
+            
+            // Efek visual
+            createPunchEffect(document.getElementById('boss'));
+            
+            // Hit chance berdasarkan difficulty bos
+            const boss = bosses[gameState.level - 1];
+            const hitChance = 0.7 - (boss.difficulty * 0.05);
+            
+            if (Math.random() < hitChance) {
+                // Hit landed
+                let damage = 0;
+                switch(type) {
+                    case 'jab': damage = 5; break;
+                    case 'hook': damage = 8; break;
+                    case 'uppercut': damage = 12; break;
+                }
+                
+                // Bonus damage untuk uppercut
+                if (type === 'uppercut' && Math.random() < 0.3) {
+                    damage *= 1.5;
+                }
+                
+                // Kurangi health bos
+                gameState.bossHealth -= damage;
+                gameState.score += Math.floor(damage);
+                
+                // Cek jika bos KO
+                if (gameState.bossHealth <= 0) {
+                    knockoutBoss();
+                    return;
+                }
+                
+                // Efek hit pada bos
+                const bossElement = document.getElementById('boss');
+                bossElement.classList.add('hit-effect');
+                setTimeout(() => {
+                    bossElement.classList.remove('hit-effect');
+                }, 300);
+                
+                updateHUD();
+            } else {
+                // Miss
+                createPunchEffect(document.getElementById('player'));
+            }
+        }
+        
+        function dodge(direction) {
+            if (!gameRunning) return;
+            
+            const player = document.getElementById('player');
+            const currentLeft = parseInt(player.style.left) || 25;
+            
+            if (direction === 'left') {
+                player.style.left = `${Math.max(15, currentLeft - 10)}%`;
+            } else {
+                player.style.left = `${Math.min(35, currentLeft + 10)}%`;
+            }
+            
+            // Kembali ke posisi setelah delay
+            setTimeout(() => {
+                player.style.left = '25%';
+            }, 300);
+        }
+        
+        // ========== BOSS ACTIONS ==========
+        function bossAttack() {
+            if (!gameRunning) return;
+            
+            const boss = bosses[gameState.level - 1];
+            const attack = boss.attacks[Math.floor(Math.random() * boss.attacks.length)];
+            
+            // Efek visual
+            createPunchEffect(document.getElementById('player'));
+            
+            // Cek jika pemain blocking
+            if (gameState.isBlocking) {
+                // Block successful
+                const blockBtn = document.getElementById('block');
+                blockBtn.style.background = '#00ff00';
+                setTimeout(() => {
+                    if (gameState.isBlocking) {
+                        blockBtn.style.background = '#00cc00';
+                    } else {
+                        blockBtn.style.background = '#006600';
+                    }
+                }, 200);
+                return;
+            }
+            
+            // Hit pemain
+            let damage = 0;
+            switch(attack) {
+                case 'jab': damage = 4; break;
+                case 'hook': damage = 6; break;
+                case 'uppercut': damage = 10; break;
+            }
+            
+            // Adjust damage berdasarkan difficulty
+            damage *= 1 + (boss.difficulty * 0.2);
+            
+            gameState.playerHealth -= Math.floor(damage);
+            
+            // Cek jika pemain KO
+            if (gameState.playerHealth <= 0) {
+                knockoutPlayer();
+                return;
+            }
+            
+            // Efek hit pada pemain
+            const playerElement = document.getElementById('player');
+            playerElement.classList.add('hit-effect');
+            setTimeout(() => {
+                playerElement.classList.remove('hit-effect');
+            }, 300);
+            
+            updateHUD();
+        }
+        
+        // ========== KO FUNCTIONS ==========
+        function knockoutBoss() {
+            gameRunning = false;
+            clearInterval(gameLoopInterval);
+            
+            const boss = bosses[gameState.level - 1];
+            
+            // Tambah KO count
+            gameState.bossKOCount++;
+            gameState.totalKOs++;
+            
+            // Animasi KO
+            const bossElement = document.getElementById('boss');
+            bossElement.classList.add('ko-effect');
+            
+            setTimeout(() => {
+                // Cek apakah sudah cukup KO untuk level ini
+                if (gameState.bossKOCount >= boss.kosNeeded) {
+                    // Level completed
+                    showMessage(`LEVEL ${gameState.level} COMPLETE!\n\nKOs: ${gameState.bossKOCount}/${boss.kosNeeded}\nScore: ${gameState.score}\n\nContinue to next level?`);
+                } else {
+                    // Masih butuh lebih banyak KO, reset round
+                    showMessage(`KNOCKOUT ${gameState.bossKOCount}!\n\nNeed ${boss.kosNeeded - gameState.bossKOCount} more KOs\nContinue to next round?`);
+                }
+            }, 1000);
+        }
+        
+        function knockoutPlayer() {
+            gameRunning = false;
+            clearInterval(gameLoopInterval);
+            
+            // Animasi KO pemain
+            const playerElement = document.getElementById('player');
+            playerElement.classList.add('ko-effect');
+            
+            setTimeout(() => {
+                showMessage(`YOU WERE KNOCKED OUT!\n\nLevel: ${gameState.level}\nTotal Score: ${gameState.score}\nTotal KOs: ${gameState.totalKOs}`);
+            }, 1000);
+        }
+        
+        function endRound(reason) {
+            gameRunning = false;
+            clearInterval(gameLoopInterval);
+            
+            const boss = bosses[gameState.level - 1];
+            
+            if (reason === 'time') {
+                if (gameState.playerHealth > gameState.bossHealth) {
+                    showMessage(`TIME'S UP!\nYou win on points!\nNeed ${boss.kosNeeded - gameState.bossKOCount} more KOs`);
+                } else {
+                    showMessage(`TIME'S UP!\nYou lose!\nFinal Score: ${gameState.score}`);
+                }
+            }
+        }
+        
+        // ========== VISUAL EFFECTS ==========
+        function createPunchEffect(target) {
+            const rect = target.getBoundingClientRect();
+            const ringRect = document.getElementById('ring').getBoundingClientRect();
+            
+            const effect = document.createElement('div');
+            effect.className = 'punch-effect';
+            
+            // Position effect relative to target
+            const x = rect.left - ringRect.left + rect.width / 2;
+            const y = rect.top - ringRect.top + rect.height / 2;
+            
+            effect.style.left = `${x}px`;
+            effect.style.top = `${y}px`;
+            
+            document.getElementById('ring').appendChild(effect);
+            
+            setTimeout(() => {
+                effect.remove();
+            }, 300);
+        }
+        
+        // ========== MESSAGE SYSTEM ==========
+        function showMessage(text, duration = 0) {
+            messageText.innerHTML = text.replace(/\n/g, '<br>');
+            messageBox.style.display = 'block';
+            
+            if (duration > 0) {
+                setTimeout(() => {
+                    messageBox.style.display = 'none';
+                }, duration);
+            }
+        }
+        
+        // ========== CONTINUE HANDLER ==========
+        function handleContinue() {
+            messageBox.style.display = 'none';
+            
+            const boss = bosses[gameState.level - 1];
+            
+            if (gameState.bossKOCount >= boss.kosNeeded) {
+                // Level completed, lanjut ke level berikutnya
+                gameState.level++;
+                nextLevel();
+            } else {
+                // Masih dalam level yang sama, reset untuk round berikutnya
+                gameState.round++;
+                gameState.time = 150;
+                gameState.bossHealth = boss.maxHealth;
+                gameState.playerHealth = Math.min(100, gameState.playerHealth + 20); // Heal sedikit
+                gameState.isBlocking = false;
+                gameRunning = true;
+                
+                // Reset posisi
+                document.getElementById('player').classList.remove('ko-effect');
+                document.getElementById('player').style.left = '25%';
+                document.getElementById('boss').classList.remove('ko-effect');
+                
+                updateHUD();
+                startGameLoop();
+                
+                showMessage(`ROUND ${gameState.round}\nFIGHT!`, 1000);
+            }
+        }
+        
+        // ========== START GAME ==========
+        window.addEventListener('load', init);
+        
+        // Fallback: Jika game tidak start, klik ganda title
+        setTimeout(() => {
+            if (currentScreen === 'title') {
+                console.log('Game ready! Tap START GAME to begin.');
+                console.log('Double-tap START GAME for progression mode (all bosses).');
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
